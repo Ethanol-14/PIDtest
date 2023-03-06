@@ -18,6 +18,7 @@
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 #include "vex.h"
+#include <cmath>
 
 using namespace vex;
 
@@ -54,40 +55,74 @@ void pre_auton(void) {
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
-void driveTo(float _speed, int _Ltarget, int _Rtarget) {
-  float Kp = 0.3;
-  float Ki = 0;
-  float Kd = 0;
+float Ltarget = 0;
+float Rtarget = 0;
 
-  float error = 0;
-  float cumulativeError = 0;
-  float previousError = 0;
-  float deltaError = 0;
+void FullDriveTo(float _speed, int _Ltarget, int _Rtarget, float give) {
+  float turnKp = 0.5;
+  float turnKi = 0.01;
+  float turnKd = 0;
+
+  float turnError = 0;
+  float turnCumulativeError = 0;
+  float turnPreviousError = 0;
+  float turnDeltaError = 0;
+
+  float speedKp = 0.1;
+  float speedKd = 0.5;
+
+  float speedError = 0;
+  float speedPreviousError = 0;
+  float speedDeltaError = 0;
 
   float Lsensor = 0;
   float Rsensor = 0;
-
+  
   float speed = _speed;
-  float Ltarget = _Ltarget*28.6479;
-  float Rtarget = _Rtarget*28.6479;
+
+  Ltarget += _Ltarget*28.6479;
+  Rtarget += _Rtarget*28.6479;
   
   Lmotor.spin(forward);
   Rmotor.spin(forward);
 
-  while (Lsensor < Ltarget || Rsensor < Rtarget) {
+  while ((Lsensor <= Ltarget - (give*28.6479) || Lsensor >= Ltarget + (give*28.6479)) || (Rsensor <= Rtarget - (give*28.6479) || Rsensor >= Rtarget + (give*28.6479)) || speedDeltaError != 0) {
     Lmotor.setVelocity(speed, percent); //leader
-    Rmotor.setVelocity(speed+(Kp*error)+(Ki*cumulativeError)+(Kd*deltaError), percent); //follower
+    Rmotor.setVelocity(speed+(turnKp*turnError)+(turnKi*turnCumulativeError)+(turnKd*turnDeltaError), percent); //follower
 
     Lsensor = Ltrack.position(degrees);
     Rsensor = Rtrack.position(degrees);
 
-    previousError = error;
-    error = Lsensor - Rsensor;
-    cumulativeError += error;
-    deltaError = error-previousError;
+    turnPreviousError = turnError;
+    turnError = Lsensor - Rsensor;
+    turnCumulativeError += turnError;
+    turnDeltaError = turnError-turnPreviousError;
+
+    speedPreviousError = speedError;
+
+    speedError = ((Ltarget-Lsensor)+(Rtarget-Rsensor))/2;
+    speedDeltaError = speedError-speedPreviousError;
+
+    speed = (speedKp*speedError)+(speedKd*speedDeltaError);
+    
+    if (speed > _speed) {
+      speed = _speed;
+    }
+    if (speed < _speed*-1) {
+      speed = _speed*-1;
+    }
+
+    printf("Applied speed: %f \n", speed);
+    printf("Speed from delta error: %f \n", speedDeltaError);
+    printf("Ldisp %f \n", Ltarget-Lsensor);
+    printf("Rdisp %f \n", Rtarget-Rsensor);
+    printf("Displacement %f \n", (Lsensor+Rsensor)*0.0174);
+    printf("P Error: %f \n\n", speedError);
 
     wait(20, msec);
   }
+
+  printf("Done :)\n");
 
   Lmotor.stop(brake);
   Rmotor.stop(brake);
@@ -97,7 +132,7 @@ void autonomous(void) {
   Ltrack.setPosition(0, degrees);
   Rtrack.setPosition(0, degrees);
 
-  driveTo(50, 20, 20);
+  FullDriveTo(50, 20, 20, 0.2);
 }
 
 /*---------------------------------------------------------------------------*/
