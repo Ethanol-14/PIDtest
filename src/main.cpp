@@ -58,8 +58,8 @@ void pre_auton(void) {
 float Ltarget = 0;
 float Rtarget = 0;
 
-void FullDriveTo(float _speed, int _Ltarget, int _Rtarget, float give) {
-  float turnKp = 0.5;
+void DriveForward(float _speed, int _Ltarget, int _Rtarget, float distanceGive, float speedGive) {
+  float turnKp = 0.4;
   float turnKi = 0.01;
   float turnKd = 0;
 
@@ -69,7 +69,7 @@ void FullDriveTo(float _speed, int _Ltarget, int _Rtarget, float give) {
   float turnDeltaError = 0;
 
   float speedKp = 0.1;
-  float speedKd = 0.5;
+  float speedKd = 0.6;
 
   float speedError = 0;
   float speedPreviousError = 0;
@@ -80,13 +80,13 @@ void FullDriveTo(float _speed, int _Ltarget, int _Rtarget, float give) {
   
   float speed = _speed;
 
-  Ltarget += _Ltarget*28.6479;
-  Rtarget += _Rtarget*28.6479;
+  Ltarget += _Ltarget*25.4966;
+  Rtarget += _Rtarget*25.4966;
   
   Lmotor.spin(forward);
   Rmotor.spin(forward);
 
-  while ((Lsensor <= Ltarget - (give*28.6479) || Lsensor >= Ltarget + (give*28.6479)) || (Rsensor <= Rtarget - (give*28.6479) || Rsensor >= Rtarget + (give*28.6479)) || speedDeltaError != 0) {
+  while ((Lsensor <= Ltarget - (distanceGive*25.4966) || Lsensor >= Ltarget + (distanceGive*25.4966)) || (Rsensor <= Rtarget - (distanceGive*25.4966) || Rsensor >= Rtarget + (distanceGive*25.4966)) || speedDeltaError != 0 +- speedGive) {
     Lmotor.setVelocity(speed, percent); //leader
     Rmotor.setVelocity(speed+(turnKp*turnError)+(turnKi*turnCumulativeError)+(turnKd*turnDeltaError), percent); //follower
 
@@ -116,7 +116,7 @@ void FullDriveTo(float _speed, int _Ltarget, int _Rtarget, float give) {
     printf("Speed from delta error: %f \n", speedDeltaError);
     printf("Ldisp %f \n", Ltarget-Lsensor);
     printf("Rdisp %f \n", Rtarget-Rsensor);
-    printf("Displacement %f \n", (Lsensor+Rsensor)*0.0174);
+    printf("Displacement %f \n", (Lsensor+Rsensor)*0.0196);
     printf("P Error: %f \n\n", speedError);
 
     wait(20, msec);
@@ -132,7 +132,8 @@ void autonomous(void) {
   Ltrack.setPosition(0, degrees);
   Rtrack.setPosition(0, degrees);
 
-  FullDriveTo(50, 20, 20, 0.2);
+  DriveForward(60, 40, 40, 0.2, 1);
+  DriveForward(60, 20, 20, 0.2, 1);
 }
 
 /*---------------------------------------------------------------------------*/
