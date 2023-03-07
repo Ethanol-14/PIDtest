@@ -58,7 +58,7 @@ void pre_auton(void) {
 float Ltarget = 0;
 float Rtarget = 0;
 
-void DriveForward(float _speed, int _Ltarget, int _Rtarget, float distanceGive, float speedGive) {
+void DriveForward(float _speed, float _Ltarget, float _Rtarget, float distanceGive, float speedGive) {
   float turnKp = 0.4;
   float turnKi = 0.01;
   float turnKd = 0;
