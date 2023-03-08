@@ -58,9 +58,11 @@ void pre_auton(void) {
 float Ltarget = 0;
 float Rtarget = 0;
 
-void DriveForward(float _speed, float _Ltarget, float _Rtarget, float distanceGive, float speedGive) {
-  float turnKp = 0.4;
-  float turnKi = 0.01;
+float inToDeg = 27.2;
+
+void DriveForward(float _speed, float _target, float distanceGive, float speedGive) {
+  float turnKp = 0.3;
+  float turnKi = 0;
   float turnKd = 0;
 
   float turnError = 0;
@@ -68,7 +70,7 @@ void DriveForward(float _speed, float _Ltarget, float _Rtarget, float distanceGi
   float turnPreviousError = 0;
   float turnDeltaError = 0;
 
-  float speedKp = 0.1;
+  float speedKp = 0.3;
   float speedKd = 0.6;
 
   float speedError = 0;
@@ -80,13 +82,13 @@ void DriveForward(float _speed, float _Ltarget, float _Rtarget, float distanceGi
   
   float speed = _speed;
 
-  Ltarget += _Ltarget*25.4966;
-  Rtarget += _Rtarget*25.4966;
+  Ltarget += _target*inToDeg;
+  Rtarget += _target*inToDeg;
   
   Lmotor.spin(forward);
   Rmotor.spin(forward);
 
-  while ((Lsensor <= Ltarget - (distanceGive*25.4966) || Lsensor >= Ltarget + (distanceGive*25.4966)) || (Rsensor <= Rtarget - (distanceGive*25.4966) || Rsensor >= Rtarget + (distanceGive*25.4966)) || speedDeltaError != 0 +- speedGive) {
+  while ((Lsensor <= Ltarget - (distanceGive*inToDeg) || Lsensor >= Ltarget + (distanceGive*inToDeg)) || (Rsensor <= Rtarget - (distanceGive*inToDeg) || Rsensor >= Rtarget + (distanceGive*inToDeg)) || speedDeltaError != 0 +- speedGive) {
     Lmotor.setVelocity(speed, percent); //leader
     Rmotor.setVelocity(speed+(turnKp*turnError)+(turnKi*turnCumulativeError)+(turnKd*turnDeltaError), percent); //follower
 
@@ -100,7 +102,7 @@ void DriveForward(float _speed, float _Ltarget, float _Rtarget, float distanceGi
 
     speedPreviousError = speedError;
 
-    speedError = ((Ltarget-Lsensor)+(Rtarget-Rsensor))/2;
+    speedError = Ltarget-Lsensor;
     speedDeltaError = speedError-speedPreviousError;
 
     speed = (speedKp*speedError)+(speedKd*speedDeltaError);
@@ -116,7 +118,7 @@ void DriveForward(float _speed, float _Ltarget, float _Rtarget, float distanceGi
     printf("Speed from delta error: %f \n", speedDeltaError);
     printf("Ldisp %f \n", Ltarget-Lsensor);
     printf("Rdisp %f \n", Rtarget-Rsensor);
-    printf("Displacement %f \n", (Lsensor+Rsensor)*0.0196);
+    printf("Displacement %f \n", (Lsensor+Rsensor)*0.0368);
     printf("P Error: %f \n\n", speedError);
 
     wait(20, msec);
@@ -128,12 +130,15 @@ void DriveForward(float _speed, float _Ltarget, float _Rtarget, float distanceGi
   Rmotor.stop(brake);
 }
 
+void TurnTo(float _speed, float target, float degreeGive, float angularSpeedGive) {
+
+}
+
 void autonomous(void) {
   Ltrack.setPosition(0, degrees);
   Rtrack.setPosition(0, degrees);
 
-  DriveForward(60, 40, 40, 0.2, 1);
-  DriveForward(60, 20, 20, 0.2, 1);
+  DriveForward(50, 40, 0.2, 2);
 }
 
 /*---------------------------------------------------------------------------*/
