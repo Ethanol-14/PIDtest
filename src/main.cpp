@@ -58,20 +58,42 @@ void pre_auton(void) {
 float Ltarget = 0;
 float Rtarget = 0;
 
-float inToDeg = 27.2;
+float inToDeg = 1;
+
+float turnKp = 0.3;
+float turnKi = 0;
+float turnKd = 0;
+
+float speedKp = 0.3;
+float speedKd = 0.6;
+
+void ResetTranslationalDisplacement() {
+  Ltarget = 0;
+  Rtarget = 0;
+
+  Ltrack.setPosition(0, degrees);
+  Rtrack.setPosition(0, degrees);
+}
+
+void SetProportionOfDegreesToInches(float _conversionFactor) {
+  inToDeg = _conversionFactor;
+}
+
+void SetDrivingKs(float _turnKp, float _turnKi, float _turnKd, float _speedKp, float _speedKd) {
+  turnKp = _turnKp;
+  turnKi = _turnKi;
+  turnKd = _turnKd;
+
+  speedKp = _speedKp;
+  speedKd = _speedKd;
+}
 
 void DriveForward(float _speed, float _target, float distanceGive, float speedGive) {
-  float turnKp = 0.3;
-  float turnKi = 0;
-  float turnKd = 0;
 
   float turnError = 0;
   float turnCumulativeError = 0;
   float turnPreviousError = 0;
   float turnDeltaError = 0;
-
-  float speedKp = 0.3;
-  float speedKd = 0.6;
 
   float speedError = 0;
   float speedPreviousError = 0;
@@ -139,6 +161,9 @@ void TurnTo(float _speed, float target, float degreeGive, float angularSpeedGive
 void autonomous(void) {
   Ltrack.setPosition(0, degrees);
   Rtrack.setPosition(0, degrees);
+
+  SetProportionOfDegreesToInches(27.2);
+  SetDrivingKs(0.3, 0, 0, 0.3, 0.6);
 
   DriveForward(50, 20, 0.2, 0.9);
 }
