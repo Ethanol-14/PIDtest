@@ -88,7 +88,7 @@ void DriveForward(float _speed, float _target, float distanceGive, float speedGi
   Lmotor.spin(forward);
   Rmotor.spin(forward);
 
-  while ((Lsensor <= Ltarget - (distanceGive*inToDeg) || Lsensor >= Ltarget + (distanceGive*inToDeg)) || (Rsensor <= Rtarget - (distanceGive*inToDeg) || Rsensor >= Rtarget + (distanceGive*inToDeg)) || speedDeltaError != 0 +- speedGive) {
+  while (Ltarget-Lsensor < distanceGive*inToDeg || Rtarget-Rsensor < distanceGive*inToDeg || speedDeltaError != 0 +- speedGive) {
     Lmotor.setVelocity(speed, percent); //leader
     Rmotor.setVelocity(speed+(turnKp*turnError)+(turnKi*turnCumulativeError)+(turnKd*turnDeltaError), percent); //follower
 
@@ -115,11 +115,13 @@ void DriveForward(float _speed, float _target, float distanceGive, float speedGi
     }
 
     printf("Applied speed: %f \n", speed);
-    printf("Speed from delta error: %f \n", speedDeltaError);
-    printf("Ldisp %f \n", Ltarget-Lsensor);
-    printf("Rdisp %f \n", Rtarget-Rsensor);
-    printf("Displacement %f \n", (Lsensor+Rsensor)*0.0368);
+    printf("Speed from delta error: %f \n", speedDeltaError);// ETHAN LEFT HIS COMPUTER OPEN. 
+    printf("Ldisp %f \n", (Ltarget-Lsensor)*(1/inToDeg));// IT IS CURRENTLY 3:20 AND HE HAS GONE HOME
+    printf("Rdisp %f \n", (Rtarget-Rsensor)*(1/inToDeg));//DAVID DORLAND DID NOT CHANGE ANYTHING EXCEPT THESE COMMENTS 
+    printf("Displacement %f \n", (Lsensor+Rsensor)*(0.5/inToDeg));//GOOD CODE
     printf("P Error: %f \n\n", speedError);
+
+    printf("Ltrack: %f \n\n", Ltrack.position(degrees));
 
     wait(20, msec);
   }
@@ -138,7 +140,7 @@ void autonomous(void) {
   Ltrack.setPosition(0, degrees);
   Rtrack.setPosition(0, degrees);
 
-  DriveForward(50, 40, 0.2, 2);
+  DriveForward(50, 20, 0.2, 0.9);
 }
 
 /*---------------------------------------------------------------------------*/
