@@ -15,6 +15,7 @@
 // Rmotor               motor         17              
 // Ltrack               encoder       G, H            
 // Rtrack               encoder       A, B            
+// TurnTrack            encoder       E, F            
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 #include "vex.h"
@@ -58,7 +59,10 @@ void pre_auton(void) {
 float Ltarget = 0;
 float Rtarget = 0;
 
+float YawTarget = 0;
+
 float inToDeg = 1;
+float TrackDegToYawDeg = 1;
 
 float turnKp = 0.3;
 float turnKi = 0;
@@ -66,6 +70,9 @@ float turnKd = 0;
 
 float speedKp = 0.3;
 float speedKd = 0.6;
+
+float yawKp = 0;
+float yawKd = 0;
 
 void ResetTranslationalDisplacement() {
   Ltarget = 0;
@@ -75,8 +82,12 @@ void ResetTranslationalDisplacement() {
   Rtrack.setPosition(0, degrees);
 }
 
-void SetProportionOfDegreesToInches(float _conversionFactor) {
+void SetProportionOfInchesToDegrees(float _conversionFactor) {
   inToDeg = _conversionFactor;
+}
+
+void SetProportionOfTrackingWheelDegreesToRobotYawDegrees(float _conversionFactor) {
+  TrackDegToYawDeg = _conversionFactor;
 }
 
 void SetDrivingKs(float _turnKp, float _turnKi, float _turnKd, float _speedKp, float _speedKd) {
@@ -86,6 +97,11 @@ void SetDrivingKs(float _turnKp, float _turnKi, float _turnKd, float _speedKp, f
 
   speedKp = _speedKp;
   speedKd = _speedKd;
+}
+
+void SetTurningKs(float _yawKp, float _yawKd) {
+  yawKp = _yawKp;
+  yawKd = _yawKd;
 }
 
 void DriveForward(float _speed, float _target, float distanceGive, float speedGive) {
@@ -154,15 +170,90 @@ void DriveForward(float _speed, float _target, float distanceGive, float speedGi
   Rmotor.stop(brake);
 }
 
-void TurnTo(float _speed, float target, float degreeGive, float angularSpeedGive) {
+void TurnTo(float _speed, float _target, float degreeGive, float angularSpeedGive) {
+  float tempTarget = _target;
 
+  if (TurnTrack.position(degrees) >= TrackDegToYawDeg*360) {
+    TurnTrack.setPosition(TurnTrack.position(degrees)-(TrackDegToYawDeg*360), degrees);
+  }
+  else if (TurnTrack.position(degrees) < 0) {
+    TurnTrack.setPosition(TurnTrack.position(degrees)+(TrackDegToYawDeg*360), degrees);
+  }
+
+  while (tempTarget < 0 || tempTarget >= 360) {
+    if (tempTarget < 0) {
+      tempTarget += 360;
+    }
+    else {
+      tempTarget -= 360;
+    }
+  }
+
+  YawTarget = tempTarget*TrackDegToYawDeg;
+
+  while (YawTarget < 0 || YawTarget >= TrackDegToYawDeg*360) {
+    if (YawTarget < 0) {
+      YawTarget += TrackDegToYawDeg*360;
+    }
+    else {
+      YawTarget -= TrackDegToYawDeg*360;
+    }
+  }
+
+  float tempRelativeTarget = YawTarget - TurnTrack.position(degrees);
+
+  float speed = _speed;
+  float turnError = 0;
+  float turnPreviousError = 0;
+  float turnDeltaError = turnError - turnPreviousError;
+
+  while (tempRelativeTarget < 0 || tempRelativeTarget >= TrackDegToYawDeg*360) {
+    if (tempRelativeTarget < 0) {
+      tempRelativeTarget += TrackDegToYawDeg*360;
+    }
+    else {
+      tempRelativeTarget -= TrackDegToYawDeg*360;
+    }
+  }
+
+  if (tempRelativeTarget < TrackDegToYawDeg*180) {
+    //turn right
+
+    while (TurnTrack.position(degrees) < YawTarget) {
+      Lmotor.setVelocity(speed, percent);
+      Rmotor.setVelocity(speed*-1, percent);
+
+      turnError = YawTarget - TurnTrack.position(degrees);
+      turnDeltaError = turnError - turnPreviousError;
+
+      speed = (yawKp*turnError)+(yawKd*turnDeltaError);
+
+      turnPreviousError = turnError;
+
+      wait(20, msec);
+    }
+  }
+  else {
+    //turn left
+    YawTarget -= TrackDegToYawDeg*360;
+    while (TurnTrack.position(degrees) > YawTarget) {
+      Lmotor.setVelocity(speed, percent);
+      Rmotor.setVelocity(speed*-1, percent);
+
+
+
+      wait(20, msec);
+    }
+  }
 }
 
 void autonomous(void) {
   Ltrack.setPosition(0, degrees);
   Rtrack.setPosition(0, degrees);
 
-  SetProportionOfDegreesToInches(27.2);
+  SetProportionOfInchesToDegrees(27.2);
+  SetProportionOfTrackingWheelDegreesToRobotYawDegrees(4.8591);
+
   SetDrivingKs(0.3, 0, 0, 0.3, 0.6);
 
   DriveForward(50, 20, 0.2, 0.9);

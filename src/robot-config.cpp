@@ -13,6 +13,7 @@ motor Lmotor = motor(PORT14, ratio18_1, false);
 motor Rmotor = motor(PORT17, ratio18_1, true);
 encoder Ltrack = encoder(Brain.ThreeWirePort.G);
 encoder Rtrack = encoder(Brain.ThreeWirePort.A);
+encoder TurnTrack = encoder(Brain.ThreeWirePort.E);
 
 // VEXcode generated functions
 // define variable for remote controller enable/disable

@@ -8,6 +8,7 @@ extern motor Lmotor;
 extern motor Rmotor;
 extern encoder Ltrack;
 extern encoder Rtrack;
+extern encoder TurnTrack;
 
 /**
  * Used to initialize code/tasks/devices added using tools in VEXcode Pro.
