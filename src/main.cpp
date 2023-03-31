@@ -228,7 +228,7 @@ void TurnTo(float _speed, float _target, float degreeGive, float angularSpeedGiv
     printf("turning right\n");
     //turn right
 
-    while (currentAngle < YawTarget || currentAngle < degreeGive*TrackDegToYawDeg || turnDeltaError != 0 +- angularSpeedGive) {
+    while (currentAngle < YawTarget || YawTarget - currentAngle < degreeGive*TrackDegToYawDeg || turnDeltaError != 0 +- angularSpeedGive) {
       Lmotor.setVelocity(speed, percent);
       Rmotor.setVelocity(speed*-1, percent);
 
@@ -254,7 +254,7 @@ void TurnTo(float _speed, float _target, float degreeGive, float angularSpeedGiv
     }
   }
   else {
-    printf("turning right\n");
+    printf("turning left\n");
     //turn left
 
     YawTarget -= TrackDegToYawDeg*360;
