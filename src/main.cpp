@@ -82,6 +82,10 @@ void ResetTranslationalDisplacement() {
   Rtrack.setPosition(0, degrees);
 }
 
+void ResetAngularDisplacement() {
+  TurnTrack.setPosition(0, degrees);
+}
+
 void SetProportionOfInchesToDegrees(float _conversionFactor) {
   inToDeg = _conversionFactor;
 }
@@ -172,6 +176,7 @@ void DriveForward(float _speed, float _target, float distanceGive, float speedGi
 
 void TurnTo(float _speed, float _target, float degreeGive, float angularSpeedGive) {
   float tempTarget = _target;
+  float currentAngle = TurnTrack.position(degrees)*-1;
 
   if (TurnTrack.position(degrees) >= TrackDegToYawDeg*360) {
     TurnTrack.setPosition(TurnTrack.position(degrees)-(TrackDegToYawDeg*360), degrees);
@@ -200,7 +205,7 @@ void TurnTo(float _speed, float _target, float degreeGive, float angularSpeedGiv
     }
   }
 
-  float tempRelativeTarget = YawTarget - TurnTrack.position(degrees);
+  float tempRelativeTarget = YawTarget - currentAngle;
 
   float speed = _speed;
   float turnError = 0;
@@ -216,35 +221,68 @@ void TurnTo(float _speed, float _target, float degreeGive, float angularSpeedGiv
     }
   }
 
+  Lmotor.spin(forward);
+  Rmotor.spin(forward);
+
   if (tempRelativeTarget < TrackDegToYawDeg*180) {
+    printf("turning right\n");
     //turn right
 
-    while (TurnTrack.position(degrees) < YawTarget) {
+    while (currentAngle < YawTarget || currentAngle < degreeGive*TrackDegToYawDeg || turnDeltaError != 0 +- angularSpeedGive) {
       Lmotor.setVelocity(speed, percent);
       Rmotor.setVelocity(speed*-1, percent);
 
-      turnError = YawTarget - TurnTrack.position(degrees);
+      turnError = YawTarget - currentAngle;
       turnDeltaError = turnError - turnPreviousError;
 
       speed = (yawKp*turnError)+(yawKd*turnDeltaError);
 
+      if (speed <= _speed*-1) {
+        speed = _speed*-1;
+      }
+      if (speed >= _speed) {
+        speed = _speed;
+      }
+
       turnPreviousError = turnError;
+      currentAngle = TurnTrack.position(degrees)*-1;
 
       wait(20, msec);
+
+      printf("Degrees remaining: %f\n", turnError);
+      printf("Theoretical speed: %f\n", speed);
     }
   }
   else {
+    printf("turning right\n");
     //turn left
+
     YawTarget -= TrackDegToYawDeg*360;
-    while (TurnTrack.position(degrees) > YawTarget) {
+    while (currentAngle > YawTarget || currentAngle - YawTarget < degreeGive*TrackDegToYawDeg || turnDeltaError != 0 +- angularSpeedGive) {
       Lmotor.setVelocity(speed, percent);
       Rmotor.setVelocity(speed*-1, percent);
 
+      turnError = YawTarget - currentAngle;
+      turnDeltaError = turnError - turnPreviousError;
 
+      speed = (yawKp*turnError)+(yawKd*turnDeltaError);
+
+      if (speed <= _speed*-1) {
+        speed = _speed*-1;
+      }
+      if (speed >= _speed) {
+        speed = _speed;
+      }
+
+      turnPreviousError = turnError;
+      currentAngle = TurnTrack.position(degrees)*-1;
 
       wait(20, msec);
     }
   }
+
+  Lmotor.stop(brake);
+  Rmotor.stop(brake);
 }
 
 void autonomous(void) {
@@ -255,8 +293,10 @@ void autonomous(void) {
   SetProportionOfTrackingWheelDegreesToRobotYawDegrees(4.8591);
 
   SetDrivingKs(0.3, 0, 0, 0.3, 0.6);
+  SetTurningKs(0.5, 0);
 
-  DriveForward(50, 20, 0.2, 0.9);
+  //DriveForward(50, 20, 0.2, 0.9);
+  TurnTo(20, 90, 2, 1);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -271,8 +311,7 @@ void autonomous(void) {
 
 void usercontrol(void) {
   while (true) {
-    
-    wait(20, msec);
+    printf("tdeg: %f\n", TurnTrack.position(degrees));
   }
 }
 
