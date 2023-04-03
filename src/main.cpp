@@ -68,8 +68,8 @@ float turnKp = 0.3;
 float turnKi = 0;
 float turnKd = 0;
 
-float speedKp = 0.3;
-float speedKd = 0.6;
+float distanceKp = 0.3;
+float distanceKd = 0.6;
 
 float yawKp = 0;
 float yawKd = 0;
@@ -99,8 +99,8 @@ void SetDrivingKs(float _turnKp, float _turnKi, float _turnKd, float _speedKp, f
   turnKi = _turnKi;
   turnKd = _turnKd;
 
-  speedKp = _speedKp;
-  speedKd = _speedKd;
+  distanceKp = _speedKp;
+  distanceKd = _speedKd;
 }
 
 void SetTurningKs(float _yawKp, float _yawKd) {
@@ -115,9 +115,9 @@ void DriveForward(float _speed, float _target, float distanceGive, float speedGi
   float turnPreviousError = 0;
   float turnDeltaError = 0;
 
-  float speedError = 0;
-  float speedPreviousError = 0;
-  float speedDeltaError = 0;
+  float distanceError = 0;
+  float distancePreviousError = 0;
+  float distanceDeltaError = 0;
 
   float Lsensor = 0;
   float Rsensor = 0;
@@ -130,7 +130,7 @@ void DriveForward(float _speed, float _target, float distanceGive, float speedGi
   Lmotor.spin(forward);
   Rmotor.spin(forward);
 
-  while (Ltarget-Lsensor < distanceGive*inToDeg || Rtarget-Rsensor < distanceGive*inToDeg || speedDeltaError != 0 +- speedGive) {
+  while (Ltarget-Lsensor > distanceGive*inToDeg || Ltarget-Lsensor < distanceGive*inToDeg*-1 || Rtarget-Rsensor > distanceGive*inToDeg || Rtarget-Rsensor < distanceGive*inToDeg*-1 || distanceDeltaError != 0 +- speedGive) {
     Lmotor.setVelocity(speed, percent); //leader
     Rmotor.setVelocity(speed+(turnKp*turnError)+(turnKi*turnCumulativeError)+(turnKd*turnDeltaError), percent); //follower
 
@@ -142,12 +142,12 @@ void DriveForward(float _speed, float _target, float distanceGive, float speedGi
     turnCumulativeError += turnError;
     turnDeltaError = turnError-turnPreviousError;
 
-    speedPreviousError = speedError;
+    distancePreviousError = distanceError;
 
-    speedError = Ltarget-Lsensor;
-    speedDeltaError = speedError-speedPreviousError;
+    distanceError = Ltarget-Lsensor;
+    distanceDeltaError = distanceError-distancePreviousError;
 
-    speed = (speedKp*speedError)+(speedKd*speedDeltaError);
+    speed = (distanceKp*distanceError)+(distanceKd*distanceDeltaError);
     
     if (speed > _speed) {
       speed = _speed;
@@ -157,11 +157,11 @@ void DriveForward(float _speed, float _target, float distanceGive, float speedGi
     }
 
     printf("Applied speed: %f \n", speed);
-    printf("Speed from delta error: %f \n", speedDeltaError);// ETHAN LEFT HIS COMPUTER OPEN. 
+    printf("Speed from delta error: %f \n", distanceDeltaError);// ETHAN LEFT HIS COMPUTER OPEN. 
     printf("Ldisp %f \n", (Ltarget-Lsensor)*(1/inToDeg));// IT IS CURRENTLY 3:20 AND HE HAS GONE HOME
     printf("Rdisp %f \n", (Rtarget-Rsensor)*(1/inToDeg));//DAVID DORLAND DID NOT CHANGE ANYTHING EXCEPT THESE COMMENTS 
     printf("Displacement %f \n", (Lsensor+Rsensor)*(0.5/inToDeg));//GOOD CODE
-    printf("P Error: %f \n\n", speedError);
+    printf("P Error: %f \n\n", distanceError);
 
     printf("Ltrack: %f \n\n", Ltrack.position(degrees));
 
@@ -234,7 +234,7 @@ void TurnTo(float _speed, float _target, float degreeGive, float angularSpeedGiv
     YawTarget -= TrackDegToYawDeg*360;
   }
 
-  while (YawTarget - currentAngle > degreeGive*TrackDegToYawDeg || YawTarget - currentAngle < degreeGive*TrackDegToYawDeg*-1 || turnDeltaError != 0 +- angularSpeedGive) {
+  while (YawTarget - currentAngle > degreeGive*TrackDegToYawDeg || YawTarget - currentAngle < degreeGive*TrackDegToYawDeg*-1 || turnDeltaError > angularSpeedGive || turnDeltaError < angularSpeedGive*-1) {
     Lmotor.setVelocity(speed, percent);
     Rmotor.setVelocity(speed*-1, percent);
     currentAngle = TurnTrack.position(degrees)*-1;
@@ -258,18 +258,52 @@ void TurnTo(float _speed, float _target, float degreeGive, float angularSpeedGiv
     printf("Degrees remaining: %f\n", turnError);
     printf("distance give: %f\n", degreeGive*TrackDegToYawDeg);
     printf("Actual speed: %f\n", turnDeltaError);
-    printf("angular speed give: %f\n", angularSpeedGive);
+    printf("angular speed give: %f\n\n", angularSpeedGive);
+  }
 
-    if (YawTarget - currentAngle < degreeGive*TrackDegToYawDeg) {
-      printf("condition 1 met\n");
+  Lmotor.stop(brake);
+  Rmotor.stop(brake);
+
+  printf("done :)\n");
+}
+
+void TurnRight(float _speed, float _target, float degreeGive, float angularSpeedGive) {
+
+  float speed = _speed;
+  float turnError = 0;
+  float turnPreviousError = 0;
+  float turnDeltaError = 0;
+
+  Ltarget += _target*TrackDegToYawDeg;
+  Rtarget -= _target*TrackDegToYawDeg;
+
+  Lmotor.spin(forward);
+  Rmotor.spin(forward);
+
+  while (Ltarget - Ltrack.position(degrees) > degreeGive*TrackDegToYawDeg || Ltarget - Ltrack.position(degrees) < degreeGive*TrackDegToYawDeg*-1 || turnDeltaError > angularSpeedGive || turnDeltaError < angularSpeedGive*-1) {
+    Lmotor.setVelocity(speed, percent);
+    Rmotor.setVelocity(speed*-1, percent);
+
+    turnError = Ltarget - Ltrack.position(degrees);
+    turnDeltaError = turnError - turnPreviousError;
+
+    speed = (yawKp*turnError)+(yawKd*turnDeltaError);
+
+    if (speed <= _speed*-1) {
+      speed = _speed*-1;
     }
-    if (YawTarget - currentAngle > degreeGive*TrackDegToYawDeg*-1) {
-      printf("condition 2 met\n");
+    if (speed >= _speed) {
+      speed = _speed;
     }
-    if (turnDeltaError == 0 +- angularSpeedGive) {
-      printf("condition 3 met\n");
-    }
-    printf("\n");
+
+    turnPreviousError = turnError;
+
+    wait(20, msec);
+
+    printf("Degrees remaining: %f\n", turnError);
+    printf("distance give: %f\n", degreeGive*TrackDegToYawDeg);
+    printf("Actual speed: %f\n", turnDeltaError);
+    printf("angular speed give: %f\n\n", angularSpeedGive);
   }
 
   Lmotor.stop(brake);
@@ -283,13 +317,13 @@ void autonomous(void) {
   Rtrack.setPosition(0, degrees);
 
   SetProportionOfInchesToDegrees(27.2);
-  SetProportionOfTrackingWheelDegreesToRobotYawDegrees(4.8591);
+  SetProportionOfTrackingWheelDegreesToRobotYawDegrees(1.8); //used to be 4.65 when the back tracking wheel was used
 
   SetDrivingKs(0.3, 0, 0, 0.3, 0.6);
-  SetTurningKs(0.5, 0.5);
+  SetTurningKs(0.4, 0);
 
   //DriveForward(50, 20, 0.2, 0.9);
-  TurnTo(20, 90, 2, 4);
+  TurnRight(40, 180, 1, 1);
 }
 
 /*---------------------------------------------------------------------------*/
