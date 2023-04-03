@@ -256,8 +256,8 @@ void TurnTo(float _speed, float _target, float degreeGive, float angularSpeedGiv
     wait(20, msec);
 
     printf("Degrees remaining: %f\n", turnError);
-    printf("Actual speed: %f\n", turnDeltaError);
     printf("distance give: %f\n", degreeGive*TrackDegToYawDeg);
+    printf("Actual speed: %f\n", turnDeltaError);
     printf("angular speed give: %f\n", angularSpeedGive);
 
     if (YawTarget - currentAngle < degreeGive*TrackDegToYawDeg) {
@@ -289,7 +289,7 @@ void autonomous(void) {
   SetTurningKs(0.5, 0.5);
 
   //DriveForward(50, 20, 0.2, 0.9);
-  TurnTo(20, 90, 2, 2);
+  TurnTo(20, 90, 2, 4);
 }
 
 /*---------------------------------------------------------------------------*/
