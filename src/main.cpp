@@ -74,6 +74,10 @@ float distanceKd = 0.6;
 float yawKp = 0;
 float yawKd = 0;
 
+float pointKp = 0;
+float pointKi = 0;
+float pointKd = 0;
+
 void ResetTranslationalDisplacement() {
   Ltarget = 0;
   Rtarget = 0;
@@ -94,16 +98,20 @@ void SetProportionOfTrackingWheelDegreesToRobotYawDegrees(float _conversionFacto
   TrackDegToYawDeg = _conversionFactor;
 }
 
-void SetDrivingKs(float _turnKp, float _turnKi, float _turnKd, float _speedKp, float _speedKd) {
+void SetDrivingKs(float _turnKp, float _turnKi, float _turnKd, float _distanceKp, float _distanceKd) {
   turnKp = _turnKp;
   turnKi = _turnKi;
   turnKd = _turnKd;
 
-  distanceKp = _speedKp;
-  distanceKd = _speedKd;
+  distanceKp = _distanceKp;
+  distanceKd = _distanceKd;
 }
 
-void SetTurningKs(float _yawKp, float _yawKd) {
+void SetTurningKs(float _pointKp, float _pointKi, float _pointKd, float _yawKp, float _yawKd) {
+  pointKp = _pointKp;
+  pointKi = _pointKi;
+  pointKd = _pointKd;
+
   yawKp = _yawKp;
   yawKd = _yawKd;
 }
@@ -270,46 +278,67 @@ void TurnTo(float _speed, float _target, float degreeGive, float angularSpeedGiv
 void TurnRight(float _speed, float _target, float degreeGive, float angularSpeedGive) {
 
   float speed = _speed;
-  float turnError = 0;
-  float turnPreviousError = 0;
-  float turnDeltaError = 0;
+
+  float yawError = 0;
+  float yawPreviousError = 0;
+  float yawDeltaError = 0;
+
+  float pointError = 0;
+  float pointCumulativeError = 0;
+  float pointPreviousError = 0;
+  float pointDeltaError = 0;
+
+  float Lsensor = 0;
+  float Rsensor = 0;
 
   Ltarget += _target*TrackDegToYawDeg;
   Rtarget -= _target*TrackDegToYawDeg;
-
+  
   Lmotor.spin(forward);
   Rmotor.spin(forward);
 
-  while (Ltarget - Ltrack.position(degrees) > degreeGive*TrackDegToYawDeg || Ltarget - Ltrack.position(degrees) < degreeGive*TrackDegToYawDeg*-1 || turnDeltaError > angularSpeedGive || turnDeltaError < angularSpeedGive*-1) {
-    Lmotor.setVelocity(speed, percent);
-    Rmotor.setVelocity(speed*-1, percent);
+  while (Ltarget-Lsensor > degreeGive*TrackDegToYawDeg || Ltarget-Lsensor < degreeGive*TrackDegToYawDeg*-1 || Rtarget-Rsensor > degreeGive*TrackDegToYawDeg || Rtarget-Rsensor < degreeGive*TrackDegToYawDeg*-1 || yawDeltaError != 0 +- degreeGive) {
+    Lmotor.setVelocity(speed, percent); //leader
+    Rmotor.setVelocity((speed+(pointKp*pointError)+(pointKi*pointCumulativeError)+(pointKd*pointDeltaError))*-1, percent); //follower
 
-    turnError = Ltarget - Ltrack.position(degrees);
-    turnDeltaError = turnError - turnPreviousError;
+    Lsensor = Ltrack.position(degrees);
+    Rsensor = Rtrack.position(degrees);
 
-    speed = (yawKp*turnError)+(yawKd*turnDeltaError);
+    pointPreviousError = pointError;
+    pointError = Lsensor + Rsensor;
+    pointCumulativeError += pointError;
+    pointDeltaError = pointError-pointPreviousError;
 
-    if (speed <= _speed*-1) {
-      speed = _speed*-1;
-    }
-    if (speed >= _speed) {
+    yawPreviousError = yawError;
+
+    yawError = Ltarget-Lsensor;
+    yawDeltaError = yawError-yawPreviousError;
+
+    speed = (distanceKp*yawError)+(distanceKd*yawDeltaError);
+    
+    if (speed > _speed) {
       speed = _speed;
     }
+    if (speed < _speed*-1) {
+      speed = _speed*-1;
+    }
 
-    turnPreviousError = turnError;
+    printf("Applied speed: %f \n", speed);
+    printf("Speed from delta error: %f \n", yawDeltaError);
+    printf("Ldisp %f \n", (Ltarget-Lsensor)*(1/TrackDegToYawDeg));
+    printf("Rdisp %f \n", (Rtarget-Rsensor)*(1/TrackDegToYawDeg));
+    printf("Point error %f \n", pointError);
+    printf("P Error: %f \n\n", yawError);
+
+    printf("Ltrack: %f \n\n", Ltrack.position(degrees));
 
     wait(20, msec);
-
-    printf("Degrees remaining: %f\n", turnError);
-    printf("distance give: %f\n", degreeGive*TrackDegToYawDeg);
-    printf("Actual speed: %f\n", turnDeltaError);
-    printf("angular speed give: %f\n\n", angularSpeedGive);
   }
+
+  printf("Done :)\n");
 
   Lmotor.stop(brake);
   Rmotor.stop(brake);
-
-  printf("done :)\n");
 }
 
 void autonomous(void) {
@@ -317,13 +346,13 @@ void autonomous(void) {
   Rtrack.setPosition(0, degrees);
 
   SetProportionOfInchesToDegrees(27.2);
-  SetProportionOfTrackingWheelDegreesToRobotYawDegrees(1.8); //used to be 4.65 when the back tracking wheel was used
+  SetProportionOfTrackingWheelDegreesToRobotYawDegrees(3.18); //used to be 4.65 when the back tracking wheel was used
 
   SetDrivingKs(0.3, 0, 0, 0.3, 0.6);
-  SetTurningKs(0.4, 0);
+  SetTurningKs(0.5, 0, 0, 0.3, 0.5);
 
   //DriveForward(50, 20, 0.2, 0.9);
-  TurnRight(40, 180, 1, 1);
+  TurnRight(40, 360, 1, 1);
 }
 
 /*---------------------------------------------------------------------------*/
