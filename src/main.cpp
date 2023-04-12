@@ -57,12 +57,11 @@ void pre_auton(void) {
 /*---------------------------------------------------------------------------*/
 
 float Ltarget = 0;
-float Rtarget = 0;
 
 float YawTarget = 0;
 
 float inToDeg = 1;
-float TrackDegToYawDeg = 1;
+float YawDegToTrackDeg = 1;
 
 float turnKp = 0.3;
 float turnKi = 0;
@@ -80,7 +79,6 @@ float pointKd = 0;
 
 void ResetSensors() {
   Ltarget = 0;
-  Rtarget = 0;
 
   Ltrack.setPosition(0, degrees);
   Rtrack.setPosition(0, degrees);
@@ -90,8 +88,8 @@ void SetProportionOfInchesToDegrees(float _conversionFactor) {
   inToDeg = _conversionFactor;
 }
 
-void SetProportionOfTrackingWheelDegreesToRobotYawDegrees(float _conversionFactor) {
-  TrackDegToYawDeg = _conversionFactor;
+void SetProportionOfRobotYawDegreesToTrackingWheelDegrees(float _conversionFactor) {
+  YawDegToTrackDeg = _conversionFactor;
 }
 
 void SetDrivingKs(float _turnKp, float _turnKi, float _turnKd, float _distanceKp, float _distanceKd) {
@@ -119,7 +117,7 @@ void DriveForward(float _speed, float _target, float distanceGive, float speedGi
   float turnPreviousError = 0;
   float turnDeltaError = 0;
 
-  float distanceError = 0;
+  float distanceError = distanceGive*inToDeg+1;
   float distancePreviousError = 0;
   float distanceDeltaError = 0;
 
@@ -129,15 +127,13 @@ void DriveForward(float _speed, float _target, float distanceGive, float speedGi
   float speed = _speed;
 
   Ltarget += _target*inToDeg;
-  Rtarget += _target*inToDeg;
   
   Lmotor.spin(forward);
   Rmotor.spin(forward);
 
   printf("Ltarget: %f\n", Ltarget);
-  printf("Rtarget: %f\n", Rtarget);
 
-  while (Ltarget-Lsensor > distanceGive*inToDeg || Ltarget-Lsensor < distanceGive*inToDeg*-1 || Rtarget-Rsensor > distanceGive*inToDeg || Rtarget-Rsensor < distanceGive*inToDeg*-1 || distanceDeltaError > speedGive || distanceDeltaError < speedGive*-1) {
+  while (distanceError > distanceGive*inToDeg || distanceError < distanceGive*inToDeg*-1 || turnError > distanceGive*inToDeg || turnError < distanceGive*inToDeg*-1 || distanceDeltaError > speedGive || distanceDeltaError < speedGive*-1) {
     Lmotor.setVelocity(speed, percent); //leader
     Rmotor.setVelocity(speed+(turnKp*turnError)+(turnKi*turnCumulativeError)+(turnKd*turnDeltaError), percent); //follower
 
@@ -174,10 +170,9 @@ void DriveForward(float _speed, float _target, float distanceGive, float speedGi
     if (Ltarget-Lsensor < distanceGive*inToDeg && Ltarget-Lsensor > distanceGive*inToDeg*-1) {
       printf("Ltrack condition met\n");
     }
-    if (Rtarget-Rsensor < distanceGive*inToDeg && Rtarget-Rsensor > distanceGive*inToDeg*-1) {
+    if (Lsensor-Rsensor < distanceGive*inToDeg && Lsensor-Rsensor > distanceGive*inToDeg*-1) {
       printf("Rtrack condition met\n");
     }
-    printf("Speed from delta error: %f\n", distanceDeltaError);
     if (distanceDeltaError < speedGive && distanceDeltaError > speedGive*-1) {
       printf("speed condition met\n\n");
     }
@@ -195,7 +190,7 @@ void TurnRight(float _speed, float _target, float degreeGive, float angularSpeed
 
   float speed = _speed;
 
-  float yawError = 0;
+  float yawError = degreeGive*YawDegToTrackDeg+1;
   float yawPreviousError = 0;
   float yawDeltaError = 0;
 
@@ -207,16 +202,17 @@ void TurnRight(float _speed, float _target, float degreeGive, float angularSpeed
   float Lsensor = 0;
   float Rsensor = 0;
 
-  Ltarget += _target*TrackDegToYawDeg;
-  Rtarget -= _target*TrackDegToYawDeg;
+  float origin = Ltrack.position(degrees);
+
+  Ltarget += _target*YawDegToTrackDeg;
   
   Lmotor.spin(forward);
   Rmotor.spin(forward);
 
   printf("Ltarget: %f\n", Ltarget);
-  printf("Rtarget: %f\n", Rtarget);
+  printf("Origin: %f\n", origin);
 
-  while (Ltarget-Lsensor > degreeGive*TrackDegToYawDeg || Ltarget-Lsensor < degreeGive*TrackDegToYawDeg*-1 || Rtarget-Rsensor > degreeGive*TrackDegToYawDeg || Rtarget-Rsensor < degreeGive*TrackDegToYawDeg*-1 || yawDeltaError > angularSpeedGive || yawDeltaError < angularSpeedGive*-1) {
+  while (yawError > degreeGive*YawDegToTrackDeg || yawError < degreeGive*YawDegToTrackDeg*-1 || pointError > degreeGive*YawDegToTrackDeg || pointError < degreeGive*YawDegToTrackDeg*-1 || yawDeltaError > angularSpeedGive || yawDeltaError < angularSpeedGive*-1) {
     Lmotor.setVelocity(speed, percent); //leader
     Rmotor.setVelocity((speed+(pointKp*pointError)+(pointKi*pointCumulativeError)+(pointKd*pointDeltaError))*-1, percent); //follower
 
@@ -224,7 +220,7 @@ void TurnRight(float _speed, float _target, float degreeGive, float angularSpeed
     Rsensor = Rtrack.position(degrees);
 
     pointPreviousError = pointError;
-    pointError = Lsensor - (Rsensor*-1);
+    pointError = (Lsensor-origin)+(Rsensor-origin);
     pointCumulativeError += pointError;
     pointDeltaError = pointError-pointPreviousError;
 
@@ -244,8 +240,8 @@ void TurnRight(float _speed, float _target, float degreeGive, float angularSpeed
 
     /*printf("Applied speed: %f\n", speed);
     printf("Speed from delta error: %f\n", yawDeltaError);
-    printf("Lerror %f\n", (Ltarget-Lsensor)*(1/TrackDegToYawDeg));
-    printf("Rerror %f\n", (Rtarget-Rsensor)*(1/TrackDegToYawDeg));
+    printf("Lerror %f\n", (Ltarget-Lsensor)*(1/YawDegToTrackDeg));
+    printf("Rerror %f\n", (Rtarget-Rsensor)*(1/YawDegToTrackDeg));
     printf("Point error %f\n", pointError);
     printf("P Error: %f\n", yawError);
     printf("Ltrack: %f\n\n", Ltrack.position(degrees));*/
@@ -253,7 +249,7 @@ void TurnRight(float _speed, float _target, float degreeGive, float angularSpeed
     if (Ltarget-Lsensor < degreeGive*inToDeg && Ltarget-Lsensor > degreeGive*inToDeg*-1) {
       printf("Ltrack condition met\n");
     }
-    if (Rtarget-Rsensor < degreeGive*inToDeg && Rtarget-Rsensor > degreeGive*inToDeg*-1) {
+    if (Lsensor+Rsensor < degreeGive*inToDeg && Lsensor+Rsensor > degreeGive*inToDeg*-1) {
       printf("Rtrack condition met\n");
     }
     if (yawDeltaError < angularSpeedGive && yawDeltaError > angularSpeedGive*-1) {
@@ -264,8 +260,7 @@ void TurnRight(float _speed, float _target, float degreeGive, float angularSpeed
   }
 
   printf("Done :)\n");
-  Rtarget = Ltarget;
-  Rtrack.setPosition(Ltrack.position(degrees), degrees);
+  Rtrack.setPosition(Rtrack.position(degrees)+(_target*YawDegToTrackDeg*2), degrees);
 
   Lmotor.stop(brake);
   Rmotor.stop(brake);
@@ -273,7 +268,7 @@ void TurnRight(float _speed, float _target, float degreeGive, float angularSpeed
 
 void autonomous(void) {
   SetProportionOfInchesToDegrees(27.2);
-  SetProportionOfTrackingWheelDegreesToRobotYawDegrees(3.2); //used to be 4.65 when the back tracking wheel was used
+  SetProportionOfRobotYawDegreesToTrackingWheelDegrees(3.18); //used to be 4.65 when the back tracking wheel was used
 
   SetDrivingKs(0.3, 0, 0, 0.4, 0.6);
   SetTurningKs(0.3, 0, 0, 0.3, 0.7);
@@ -283,15 +278,13 @@ void autonomous(void) {
   printf("finished zero\n");
   printf("Ltarget: %f\n", Ltarget);
   printf("Lsensor: %f\n", Ltrack.position(degrees));
-  printf("Rtarget: %f\n", Rtarget);
   printf("Rsensor: %f\n", Rtrack.position(degrees));
   printf("\n");
   
-  TurnRight(20, 90, 2, 1);
+  TurnRight(20, 90, 1, 1);
   printf("finished first, turn\n");
   printf("Ltarget: %f\n", Ltarget);
   printf("Lsensor: %f\n", Ltrack.position(degrees));
-  printf("Rtarget: %f\n", Rtarget);
   printf("Rsensor: %f\n", Rtrack.position(degrees));
   printf("\n");
 
@@ -299,15 +292,13 @@ void autonomous(void) {
   printf("finished second, forward\n");
   printf("Ltarget: %f\n", Ltarget);
   printf("Lsensor: %f\n", Ltrack.position(degrees));
-  printf("Rtarget: %f\n", Rtarget);
   printf("Rsensor: %f\n", Rtrack.position(degrees));
   printf("\n");
 
-  TurnRight(20, 90, 2, 1);
+  TurnRight(20, 90, 1, 1);
   printf("finished third, turn\n");
   printf("Ltarget: %f\n", Ltarget);
   printf("Lsensor: %f\n", Ltrack.position(degrees));
-  printf("Rtarget: %f\n", Rtarget);
   printf("Rsensor: %f\n", Rtrack.position(degrees));
   printf("\n");
 }
